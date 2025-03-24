@@ -52,10 +52,6 @@ pub fn part_two(input: &str) -> Option<u64> {
             .map(|s| s.parse().unwrap())
             .collect();
 
-        if is_safe(&levels) {
-            return true;
-        }
-
         for i in 0..levels.len() {
             let mut temp_levels = levels.clone();
             temp_levels.remove(i);
@@ -67,13 +63,13 @@ pub fn part_two(input: &str) -> Option<u64> {
         false
     }
 
-    input
-        .lines()
-        .filter(|line| !line.is_empty())
-        .filter(|report| is_report_safe(report))
-        .count()
-        .try_into()
-        .ok()
+    Some(
+        input
+            .lines()
+            .filter(|line| !line.is_empty())
+            .filter(|report| is_report_safe(report))
+            .count() as u64,
+    )
 }
 
 #[cfg(test)]
