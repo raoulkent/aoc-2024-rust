@@ -27,7 +27,28 @@ pub fn part_one(input: &str) -> Option<u64> {
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    None
+    let re = Regex::new(r"(mul\((\d+),(\d+)\)|do\(\)|don't\(\))").unwrap();
+    let mut sum = 0;
+    let mut enabled = true;
+
+    for cap in re.captures_iter(input) {
+        if let Some(m) = cap.get(1) {
+            match m.as_str() {
+                s if s.starts_with("mul") => {
+                    if enabled {
+                        let first = cap.get(2).unwrap().as_str().parse::<u64>().unwrap();
+                        let second = cap.get(3).unwrap().as_str().parse::<u64>().unwrap();
+                        sum += first * second;
+                    }
+                }
+                "do()" => enabled = true,
+                "don't()" => enabled = false,
+                _ => {}
+            }
+        }
+    }
+
+    Some(sum)
 }
 
 #[cfg(test)]
