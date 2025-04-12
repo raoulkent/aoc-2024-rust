@@ -27,19 +27,19 @@ fn parse_page_ordering(input: &str) -> Vec<(usize, usize)> {
 
 fn parse_updates(input: &str) -> Vec<Vec<usize>> {
     input
-        .lines() // 1. Iterate over each line in the input string
+        .lines()
         .map(|line| {
-            // 2. Process each line
-            line.split(',') // 3. Split the line into parts based on the comma
-                .map(|num_str| { // 4. Process each part (string representation of a number)
+
+            line.split(',')
+                .map(|num_str| {
                     num_str
-                        .trim() // 5. Remove leading/trailing whitespace (important!)
-                        .parse::<usize>() // 6. Attempt to parse the string part into a usize
-                        .expect("Failed to parse number: Input should contain only comma-separated numbers per line.") // 7. Handle potential parsing errors (panics on error)
+                        .trim()
+                        .parse::<usize>()
+                        .expect("Failed to parse number: Input should contain only comma-separated numbers per line.")
                 })
-                .collect::<Vec<usize>>() // 8. Collect the parsed numbers for this line into a Vec<usize>
+                .collect::<Vec<usize>>()
         })
-        .collect::<Vec<Vec<usize>>>() // 9. Collect all the Vec<usize> (one for each line) into the final Vec<Vec<usize>>
+        .collect::<Vec<Vec<usize>>>()
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
