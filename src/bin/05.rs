@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 advent_of_code::solution!(5);
 
 fn split_input(input: &str) -> (&str, &str) {
@@ -42,11 +44,59 @@ fn parse_updates(input: &str) -> Vec<Vec<usize>> {
         .collect::<Vec<Vec<usize>>>()
 }
 
-pub fn part_one(input: &str) -> Option<u64> {
-    None
+fn calculate_page_ordering(input: Vec<(usize, usize)>) -> HashMap<usize, Vec<usize>> {
+    input.iter().fold(
+        // HashMap::<usize, Vec<usize>>(),
+        HashMap::new(),
+        |mut acc_map, &(first, second)| {
+            acc_map.entry(first).or_default().push(second);
+            // acc_map.entry(first).or_insert_with(Vec::new).push(second);
+            acc_map
+        },
+    )
 }
 
-pub fn part_two(input: &str) -> Option<u64> {
+fn is_update_valid(updates: &[usize], ordering_map: &HashMap<usize, Vec<usize>>) -> bool {
+    let page_indices: HashMap<usize, usize> = updates
+        .iter()
+        .enumerate()
+        .map(|(index, &page)| (page, index))
+        .collect();
+    let any_violation_found = ordering_map
+        .iter()
+        .flat_map(|(&page_x, pages_after_x)| {
+            pages_after_x.iter().map(move |&page_y| (page_x, page_y))
+        })
+        .any(
+            |(page_x, page_y)| match (page_indices.get(&page_x), page_indices.get(&page_y)) {
+                (Some(&index_x), Some(&index_y)) => index_x > index_y,
+                _ => false,
+            },
+        );
+    !any_violation_found
+}
+
+pub fn part_one(input: &str) -> Option<u64> {
+    let (rules_str, updates_str) = split_input(input);
+
+    let parsed_rules = parse_page_ordering(rules_str);
+    let ordering_map = calculate_page_ordering(parsed_rules);
+
+    let updates = parse_updates(updates_str);
+
+    let total_middle_page_sum = updates
+        .iter()
+        .filter(|update_vec| !update_vec.is_empty() && is_update_valid(update_vec, &ordering_map))
+        .map(|valid_update_vec| {
+            let middle_index = (valid_update_vec.len() - 1) / 2;
+            valid_update_vec[middle_index] as u64
+        })
+        .sum();
+
+    Some(total_middle_page_sum)
+}
+
+pub fn part_two(_input: &str) -> Option<u64> {
     None
 }
 
