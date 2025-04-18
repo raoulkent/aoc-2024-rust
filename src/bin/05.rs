@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 advent_of_code::solution!(5);
 
@@ -56,8 +56,8 @@ fn calculate_page_ordering(input: Vec<(usize, usize)>) -> HashMap<usize, Vec<usi
     )
 }
 
-fn is_update_valid(updates: &[usize], ordering_map: &HashMap<usize, Vec<usize>>) -> bool {
-    let page_indices: HashMap<usize, usize> = updates
+fn is_update_valid(update: &[usize], ordering_map: &HashMap<usize, Vec<usize>>) -> bool {
+    let page_indices: HashMap<usize, usize> = update
         .iter()
         .enumerate()
         .map(|(index, &page)| (page, index))
@@ -74,6 +74,78 @@ fn is_update_valid(updates: &[usize], ordering_map: &HashMap<usize, Vec<usize>>)
             },
         );
     !any_violation_found
+}
+
+fn correct_update(update: &[usize], ordering_map: &HashMap<usize, Vec<usize>>) -> Vec<usize> {
+    // 1. Find the unique pages for this update
+    let pages_in_update: HashSet<usize> = update.iter().cloned().collect();
+    if pages_in_update.is_empty() {
+        return Vec::new();
+    }
+
+    // 2. Calculate the in-degrees for the pages
+    let mut in_degrees: HashMap<usize, usize> = pages_in_update.iter().map(|&p| (p, 0)).collect();
+    // Create adjacency list for all dependent pages
+    let mut adj: HashMap<usize, Vec<usize>> = HashMap::new();
+
+    // Iterate across all keys in the ordering_map and check if they are in the pages_in_update
+    for (&page_x, pages_after_x) in ordering_map {
+        if pages_in_update.contains(&page_x) {
+            for &page_y in pages_after_x {
+                if pages_in_update.contains(&page_y) {
+                    // Increment the in_degree for the page_y
+                    *in_degrees.entry(page_y).or_insert(0) += 1;
+                    // Add the edge X -> Y to the adjacency list
+                    adj.entry(page_x).or_default().push(page_y);
+                }
+            }
+        }
+    }
+
+    // 3. Initialise the queue with those pages that have an in_degree of 0
+    let mut queue: VecDeque<usize> = pages_in_update
+        .iter()
+        .filter(|&&p| in_degrees.get(&p).copied().unwrap_or(0) == 0)
+        .cloned()
+        .collect();
+
+    let mut corrected: Vec<usize> = Vec::with_capacity(update.len());
+
+    // 4. Process the queue using Kahns Algorithm
+    while let Some(page_p) = queue.pop_front() {
+        corrected.push(page_p);
+
+        // For each neighbour N of page P
+        if let Some(neighours) = adj.get(&page_p) {
+            for &page_n in neighours {
+                if let Some(degree) = in_degrees.get_mut(&page_n) {
+                    *degree -= 1;
+                    // If the degree becomes 0, add neighbour to queue
+                    if *degree == 0 {
+                        queue.push_back(page_n);
+                    }
+                }
+            }
+        }
+    }
+
+    // L ← Empty list that will contain the sorted elements
+    // S ← Set of all nodes with no incoming edge
+    //
+    // while S is not empty do
+    //     remove a node n from S
+    //     add n to L
+    //     for each node m with an edge e from n to m do
+    //         remove edge e from the graph
+    //         if m has no other incoming edges then
+    //             insert m into S
+    //
+    // if graph has edges then
+    //     return error   (graph has at least one cycle)
+    // else
+    //     return L   (a topologically sorted order)
+
+    corrected
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
@@ -96,8 +168,30 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(total_middle_page_sum)
 }
 
-pub fn part_two(_input: &str) -> Option<u64> {
-    None
+pub fn part_two(input: &str) -> Option<u64> {
+    let (rules_str, updates_str) = split_input(input);
+
+    let parsed_rules = parse_page_ordering(rules_str);
+    let ordering_map = calculate_page_ordering(parsed_rules);
+
+    let updates = parse_updates(updates_str);
+
+    let total_fixed_middle_page_sum = updates
+        .iter()
+        .filter(|update_vec| !update_vec.is_empty() && !is_update_valid(update_vec, &ordering_map))
+        .map(|invalid_update_vec| {
+            let corrected_vec = correct_update(invalid_update_vec, &ordering_map);
+
+            if corrected_vec.is_empty() {
+                0
+            } else {
+                let middle_index = (corrected_vec.len() - 1) / 2;
+                corrected_vec[middle_index] as u64
+            }
+        })
+        .sum();
+
+    Some(total_fixed_middle_page_sum)
 }
 
 #[cfg(test)]
