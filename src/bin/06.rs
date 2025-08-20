@@ -7,6 +7,7 @@ fn find_starting_position(input: &str) -> Option<(usize, usize, Direction)> {
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Direction {
     Up,
     Down,
@@ -36,6 +37,82 @@ impl TryFrom<char> for Direction {
             '>' => Ok(Direction::Right),
             _ => Err(()),
         }
+    }
+}
+
+struct Coordinate {
+    x: isize,
+    y: isize,
+}
+
+// Make CellState hold Direction in the Guard variant
+// Add derives for usability
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CellState {
+    Guard(Direction), // Stores the direction the guard is facing
+    Visited,
+    Unvisited,
+    Obstructed,
+}
+
+const GUARD_CHARS: &[char] = &['^', 'v', '<', '>'];
+const UNOBSTRUCTED_CHAR: char = '.'; // Example: '.' means Unvisited
+const OBSTRUCTED_CHAR: char = '#'; // Example: '#' means Obstructed
+
+#[derive(Debug, Clone)]
+struct GuardMap {
+    width: usize,
+    height: usize,
+    cells: Vec<CellState>,
+}
+
+impl GuardMap {
+    pub fn from_input(input: &str) -> Option<Self> {
+        let lines: Vec<&str> = input.lines().filter(|line| !line.is_empty()).collect();
+        if lines.is_empty() {
+            return None;
+        }
+
+        let height = lines.len();
+        let width = lines[0].chars().count();
+        if width == 0 {
+            return None;
+        }
+
+        // Ensure that all lines have the same numeber of chars
+        if lines.iter().any(|line| line.chars().count() != width) {
+            eprintln!("Warning; Inconsisent input line widths")
+        }
+
+        let mut cells = Vec::with_capacity(height * width);
+        let mut guard_found = false;
+
+        for line in lines.iter() {
+            let chars: Vec<char> = line.chars().collect();
+            for x in 0..width {
+                let c = chars.get(x).copied().unwrap_or(' ');
+
+                let state = match c {
+                    UNOBSTRUCTED_CHAR => CellState::Unvisited,
+                    OBSTRUCTED_CHAR => CellState::Obstructed,
+                    guard_char if GUARD_CHARS.contains(&guard_char) => {
+                        // We assume find_starting_position ensures only one guard exists.
+                        // If parsing here, you might want error handling for multiple guards.
+                        match Direction::try_from(guard_char) {
+                            Ok(dir) => {
+                                guard_found = true; // Mark guard as found during parsing
+                                CellState::Guard(dir)
+                            }
+                            Err(_) => CellState::Unvisited, // Should not happen if GUARD_CHARS is correct
+                        }
+                    }
+                    _ => CellState::Unvisited, // Default for unknown characters
+                };
+                cells.push(state);
+            }
+        }
+
+        None
     }
 }
 
