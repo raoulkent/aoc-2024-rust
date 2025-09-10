@@ -1,3 +1,6 @@
+use std::collections::HashSet;
+use std::ops::Add;
+
 advent_of_code::solution!(6);
 
 fn find_starting_position(input: &str) -> Option<(usize, usize, Direction)> {
@@ -24,6 +27,15 @@ impl Direction {
             Direction::Right => (1, 0),
         }
     }
+
+    fn turn_right(self) -> Self {
+        match self {
+            Direction::Up => Direction::Right,
+            Direction::Right => Direction::Down,
+            Direction::Down => Direction::Left,
+            Direction::Left => Direction::Up,
+        }
+    }
 }
 
 impl TryFrom<char> for Direction {
@@ -40,9 +52,21 @@ impl TryFrom<char> for Direction {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Coordinate {
     x: isize,
     y: isize,
+}
+
+impl Add for Coordinate {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
 }
 
 // Make CellState hold Direction in the Guard variant
@@ -112,11 +136,27 @@ impl GuardMap {
             }
         }
 
-        None
+        Some(GuardMap {
+            width,
+            height,
+            cells,
+        })
     }
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
+    let map = GuardMap::from_input(input)?;
+    let guard = find_starting_position(input)?;
+
+    let mut visited = HashSet::new();
+
+    loop {
+        // stuff here...
+        if guard_is_out_of_bounds {
+            break;
+        }
+    }
+
     None
 }
 
