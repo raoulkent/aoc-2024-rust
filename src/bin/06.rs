@@ -3,14 +3,23 @@ use std::ops::Add;
 
 advent_of_code::solution!(6);
 
-fn find_starting_position(input: &str) -> Option<(usize, usize, Direction)> {
+fn find_starting_position(input: &str) -> Option<(Coordinate, Direction)> {
     input.lines().enumerate().find_map(|(y, line)| {
-        line.char_indices()
-            .find_map(|(x, c)| Direction::try_from(c).ok().map(|dir| (x, y, dir)))
+        line.char_indices().find_map(|(x, c)| {
+            Direction::try_from(c).ok().map(|dir| {
+                (
+                    Coordinate {
+                        x: x as isize,
+                        y: y as isize,
+                    },
+                    dir,
+                )
+            })
+        })
     })
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Direction {
     Up,
     Down,
@@ -19,12 +28,12 @@ enum Direction {
 }
 
 impl Direction {
-    fn delta(self) -> (isize, isize) {
+    fn delta(self) -> Coordinate {
         match self {
-            Direction::Up => (0, -1),
-            Direction::Down => (0, 1),
-            Direction::Left => (-1, 0),
-            Direction::Right => (1, 0),
+            Direction::Up => Coordinate { x: 0, y: -1 },
+            Direction::Down => Coordinate { x: 0, y: 1 },
+            Direction::Left => Coordinate { x: -1, y: 0 },
+            Direction::Right => Coordinate { x: 1, y: 0 },
         }
     }
 
@@ -146,18 +155,43 @@ impl GuardMap {
 
 pub fn part_one(input: &str) -> Option<u64> {
     let map = GuardMap::from_input(input)?;
-    let guard = find_starting_position(input)?;
+    let (mut guard_coord, mut guard_dir) = find_starting_position(input)?;
 
-    let mut visited = HashSet::new();
+    let mut visited: HashSet<Coordinate> = HashSet::new();
+    let mut visited_tuple: HashSet<(Coordinate, Direction)> = HashSet::new();
 
     loop {
-        // stuff here...
-        if guard_is_out_of_bounds {
+        visited.insert(guard_coord);
+        if !visited_tuple.insert((guard_coord, guard_dir)) {
             break;
+        }
+
+        let next_coord = guard_coord + guard_dir.delta();
+
+        if next_coord.x < 0
+            || next_coord.y < 0
+            || next_coord.x >= map.width as isize
+            || next_coord.y >= map.height as isize
+        {
+            break;
+        }
+
+        let next_cell_index = (next_coord.y * map.width as isize + next_coord.x) as usize;
+        match map.cells.get(next_cell_index) {
+            Some(&CellState::Obstructed) => {
+                guard_dir = guard_dir.turn_right();
+            }
+            Some(_) => {
+                guard_coord = next_coord;
+            }
+            None => {
+                // Should not happen due to our bounds check, but it's good practice to handle it.
+                break;
+            }
         }
     }
 
-    None
+    Some(visited.len() as u64)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
