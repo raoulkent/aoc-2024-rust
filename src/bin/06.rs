@@ -118,7 +118,6 @@ impl GuardMap {
         }
 
         let mut cells = Vec::with_capacity(height * width);
-        let mut guard_found = false;
 
         for line in lines.iter() {
             let chars: Vec<char> = line.chars().collect();
@@ -129,15 +128,8 @@ impl GuardMap {
                     UNOBSTRUCTED_CHAR => CellState::Unvisited,
                     OBSTRUCTED_CHAR => CellState::Obstructed,
                     guard_char if GUARD_CHARS.contains(&guard_char) => {
-                        // We assume find_starting_position ensures only one guard exists.
-                        // If parsing here, you might want error handling for multiple guards.
-                        match Direction::try_from(guard_char) {
-                            Ok(dir) => {
-                                guard_found = true; // Mark guard as found during parsing
-                                CellState::Guard(dir)
-                            }
-                            Err(_) => CellState::Unvisited, // Should not happen if GUARD_CHARS is correct
-                        }
+                        let dir = Direction::try_from(guard_char).unwrap();
+                        CellState::Guard(dir)
                     }
                     _ => CellState::Unvisited, // Default for unknown characters
                 };
@@ -154,14 +146,15 @@ impl GuardMap {
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
-    let map = GuardMap::from_input(input)?;
+    let mut map = GuardMap::from_input(input)?;
     let (mut guard_coord, mut guard_dir) = find_starting_position(input)?;
 
-    let mut visited: HashSet<Coordinate> = HashSet::new();
     let mut visited_tuple: HashSet<(Coordinate, Direction)> = HashSet::new();
 
     loop {
-        visited.insert(guard_coord);
+        let current_cell_index = (guard_coord.y * map.width as isize + guard_coord.x) as usize;
+        map.cells[current_cell_index] = CellState::Visited;
+
         if !visited_tuple.insert((guard_coord, guard_dir)) {
             break;
         }
@@ -191,7 +184,12 @@ pub fn part_one(input: &str) -> Option<u64> {
         }
     }
 
-    Some(visited.len() as u64)
+    Some(
+        map.cells
+            .iter()
+            .filter(|&cell| *cell == CellState::Visited)
+            .count() as u64,
+    )
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
