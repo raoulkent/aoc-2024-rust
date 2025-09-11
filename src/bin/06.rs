@@ -143,20 +143,35 @@ impl GuardMap {
             cells,
         })
     }
+
+    
 }
 
-pub fn part_one(input: &str) -> Option<u64> {
-    let mut map = GuardMap::from_input(input)?;
-    let (mut guard_coord, mut guard_dir) = find_starting_position(input)?;
+#[derive(Debug, PartialEq, Eq)]
+enum SimulationResult {
+    Looped,
+    Escaped,
+}
 
+fn run_simulation(
+    map: &mut GuardMap,
+    start_coord: Coordinate,
+    start_dir: Direction,
+) -> (SimulationResult, usize) {
+    let mut guard_coord = start_coord;
+    let mut guard_dir = start_dir;
     let mut visited_tuple: HashSet<(Coordinate, Direction)> = HashSet::new();
 
-    loop {
+    let outcome = loop {
         let current_cell_index = (guard_coord.y * map.width as isize + guard_coord.x) as usize;
+        // Ensure the cell exists before trying to modify it.
+        if current_cell_index >= map.cells.len() {
+            break SimulationResult::Escaped;
+        }
         map.cells[current_cell_index] = CellState::Visited;
 
         if !visited_tuple.insert((guard_coord, guard_dir)) {
-            break;
+            break SimulationResult::Looped;
         }
 
         let next_coord = guard_coord + guard_dir.delta();
@@ -166,7 +181,7 @@ pub fn part_one(input: &str) -> Option<u64> {
             || next_coord.x >= map.width as isize
             || next_coord.y >= map.height as isize
         {
-            break;
+            break SimulationResult::Escaped;
         }
 
         let next_cell_index = (next_coord.y * map.width as isize + next_coord.x) as usize;
@@ -178,22 +193,46 @@ pub fn part_one(input: &str) -> Option<u64> {
                 guard_coord = next_coord;
             }
             None => {
-                // Should not happen due to our bounds check, but it's good practice to handle it.
-                break;
+                break SimulationResult::Escaped;
             }
         }
-    }
+    };
 
-    Some(
-        map.cells
-            .iter()
-            .filter(|&cell| *cell == CellState::Visited)
-            .count() as u64,
-    )
+    let visited_count = map
+        .cells
+        .iter()
+        .filter(|&cell| *cell == CellState::Visited)
+        .count();
+
+    (outcome, visited_count)
+}
+
+pub fn part_one(input: &str) -> Option<u64> {
+    let mut map = GuardMap::from_input(input)?;
+    let (start_coord, start_dir) = find_starting_position(input)?;
+
+    let (_, visited_count) = run_simulation(&mut map, start_coord, start_dir);
+    Some(visited_count as u64)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    None
+    let initial_map = GuardMap::from_input(input)?;
+    let (start_coord, start_dir) = find_starting_position(input)?;
+
+    let loop_placements = initial_map
+        .cells
+        .iter()
+        .enumerate()
+        .filter(|(_, cell_state)| **cell_state == CellState::Unvisited)
+        .filter(|(i, _)| {
+            let mut test_map = initial_map.clone();
+            test_map.cells[*i] = CellState::Obstructed;
+            let (result, _) = run_simulation(&mut test_map, start_coord, start_dir);
+            result == SimulationResult::Looped
+        })
+        .count();
+
+    Some(loop_placements as u64)
 }
 
 #[cfg(test)]
